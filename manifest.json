@@ -1,6 +1,6 @@
 {
-    "name": "RedditDown",
-    "short_name": "RedditDown",
+    "name": "RedditVid",
+    "short_name": "RedditVid",
     "description": "Free Reddit video downloader. Download Reddit videos with audio.",
     "start_url": "/",
     "display": "standalone",
