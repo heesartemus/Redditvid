@@ -1,138 +1,185 @@
-export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const { url } = req.query;
-    if (!url) return res.status(400).json({ error: 'No URL provided' });
+export const config = {
+    runtime: 'edge',
+};
+
+export default async function handler(req) {
+    const { searchParams } = new URL(req.url);
+    const inputUrl = searchParams.get('url');
+
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+    };
+
+    if (!inputUrl) {
+        return new Response(JSON.stringify({ error: 'No URL provided' }), { status: 400, headers });
+    }
 
     try {
-        let postUrl = url.trim();
-
-        // Follow redirects for short URLs (redd.it, reddit.com/r/sub/s/...)
-        if (postUrl.match(/redd\.it\//i) || postUrl.match(/\/s\//i)) {
+        // Step 1: Resolve the URL (follow redirects for short/share URLs)
+        let postUrl = inputUrl.trim();
+        
+        // Follow redirects for redd.it and /s/ share links
+        if (postUrl.match(/redd\.it/i) || postUrl.match(/reddit\.com\/r\/[^/]+\/s\//i)) {
             try {
-                const r = await fetch(postUrl, { 
-                    redirect: 'manual',
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                const r = await fetch(postUrl, {
+                    redirect: 'follow',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    }
                 });
-                const loc = r.headers.get('location');
-                if (loc) postUrl = loc;
-            } catch(e) {}
+                postUrl = r.url;
+            } catch (e) {
+                // Keep original URL if redirect fails
+            }
         }
 
-        // Clean URL
+        // Step 2: Clean and normalize the URL
         postUrl = postUrl.split('?')[0].replace(/\/$/, '');
 
-        // Normalize domain
-        postUrl = postUrl.replace(/\/\/old\.reddit\.com/i, '//www.reddit.com');
-        postUrl = postUrl.replace(/\/\/m\.reddit\.com/i, '//www.reddit.com');
-        if (!postUrl.includes('www.reddit.com') && postUrl.includes('reddit.com')) {
-            postUrl = postUrl.replace('reddit.com', 'www.reddit.com');
+        // Remove tracking params and clean
+        postUrl = postUrl.replace(/\/+$/, '');
+
+        // Validate it looks like a Reddit post
+        if (!postUrl.match(/reddit\.com\/r\//i) && !postUrl.match(/reddit\.com\/user\//i)) {
+            return new Response(JSON.stringify({ error: 'This does not look like a Reddit post URL. Please copy the full URL from Reddit.' }), { status: 400, headers });
         }
 
-        // Fetch JSON
-        const jsonUrl = postUrl + '.json';
+        // Step 3: Try fetching JSON from old.reddit.com (more reliable)
+        const oldRedditUrl = postUrl
+            .replace('www.reddit.com', 'old.reddit.com')
+            .replace('://reddit.com', '://old.reddit.com')
+            .replace('://m.reddit.com', '://old.reddit.com');
+
+        const jsonUrl = oldRedditUrl + '.json';
+
         const response = await fetch(jsonUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
             }
         });
 
         if (!response.ok) {
-            // Fallback: try HTML meta tags
-            const htmlResp = await fetch(postUrl, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+            // Fallback: try www.reddit.com
+            const wwwJsonUrl = postUrl
+                .replace('old.reddit.com', 'www.reddit.com')
+                .replace('://reddit.com', '://www.reddit.com')
+                .replace('://m.reddit.com', '://www.reddit.com')
+                + '.json';
+
+            const resp2 = await fetch(wwwJsonUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                    'Accept': 'application/json',
+                }
             });
-            const html = await htmlResp.text();
-            const ogVideo = html.match(/og:video:secure_url"\s*content="([^"]+)"/i) || html.match(/og:video"\s*content="([^"]+)"/i);
-            const ogTitle = html.match(/<title>([^<]+)<\/title>/i);
 
-            if (ogVideo) {
-                return res.status(200).json({
-                    title: ogTitle ? ogTitle[1].replace(/ : reddit/i, '').trim() : 'Reddit Video',
-                    videoUrl: ogVideo[1],
-                    audioUrl: null,
-                    hasAudio: false,
-                    duration: null
-                });
+            if (!resp2.ok) {
+                return new Response(JSON.stringify({ 
+                    error: 'Reddit returned status ' + resp2.status + '. The post may be private, deleted, or NSFW. Try a different post.' 
+                }), { status: 400, headers });
             }
-            return res.status(400).json({ error: 'Could not access this Reddit post. It may be private, deleted, or not contain a video.' });
+
+            const text2 = await resp2.text();
+            return processRedditJson(text2, headers);
         }
 
-        let data;
-        try {
-            data = JSON.parse(await response.text());
-        } catch(e) {
-            return res.status(400).json({ error: 'Reddit returned invalid data.' });
-        }
-
-        let post;
-        if (Array.isArray(data)) {
-            post = data[0]?.data?.children?.[0]?.data;
-        } else if (data?.data?.children) {
-            post = data.data.children[0]?.data;
-        }
-
-        if (!post) return res.status(404).json({ error: 'Could not find post data.' });
-
-        let videoUrl = null;
-        let audioUrl = null;
-        let title = post.title || 'Reddit Video';
-        let duration = null;
-
-        // 1. Reddit video
-        const rv = post.media?.reddit_video || post.secure_media?.reddit_video;
-        if (post.is_video && rv) {
-            videoUrl = rv.fallback_url || rv.scrubber_media_url;
-            duration = rv.duration;
-        }
-        // 2. Crosspost
-        else if (post.crosspost_parent_list?.length > 0) {
-            const cp = post.crosspost_parent_list[0];
-            const crv = cp.media?.reddit_video || cp.secure_media?.reddit_video;
-            if (cp.is_video && crv) {
-                videoUrl = crv.fallback_url || crv.scrubber_media_url;
-                duration = crv.duration;
-            }
-        }
-        // 3. Preview video
-        else if (post.preview?.reddit_video_preview) {
-            const pv = post.preview.reddit_video_preview;
-            videoUrl = pv.fallback_url || pv.scrubber_media_url;
-            duration = pv.duration;
-        }
-        // 4. Direct link
-        else if (post.url_overridden_by_dest) {
-            const d = post.url_overridden_by_dest;
-            if (d.match(/\.(mp4|webm)(\?|$)/i)) videoUrl = d;
-            else if (d.match(/\.gifv$/i)) videoUrl = d.replace('.gifv', '.mp4');
-            else if (d.includes('v.redd.it')) videoUrl = d + '/DASH_720.mp4';
-        }
-
-        if (!videoUrl) return res.status(404).json({ error: 'No video found in this post. Make sure the post contains a Reddit-hosted video.' });
-
-        videoUrl = videoUrl.split('?')[0];
-
-        // Find audio
-        let hasAudio = false;
-        if (videoUrl.includes('v.redd.it') && videoUrl.includes('DASH_')) {
-            const tryAudios = [
-                videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4'),
-                videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_audio.mp4'),
-                videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_64.mp4'),
-                videoUrl.replace(/DASH_\d+\.mp4/, 'audio'),
-            ];
-            for (const tryUrl of tryAudios) {
-                try {
-                    const check = await fetch(tryUrl, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0' } });
-                    if (check.ok) { audioUrl = tryUrl; hasAudio = true; break; }
-                } catch(e) {}
-            }
-        }
-
-        return res.status(200).json({ title, videoUrl, audioUrl, duration, hasAudio });
+        const text = await response.text();
+        return processRedditJson(text, headers);
 
     } catch (err) {
-        return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+        return new Response(JSON.stringify({ error: 'Server error: ' + (err.message || 'Unknown error') }), { status: 500, headers });
     }
+}
+
+function processRedditJson(text, headers) {
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        return new Response(JSON.stringify({ error: 'Reddit did not return valid data. The URL may be incorrect.' }), { status: 400, headers });
+    }
+
+    // Extract post data
+    let post;
+    if (Array.isArray(data) && data[0]?.data?.children?.[0]?.data) {
+        post = data[0].data.children[0].data;
+    } else if (data?.data?.children?.[0]?.data) {
+        post = data.data.children[0].data;
+    }
+
+    if (!post) {
+        return new Response(JSON.stringify({ error: 'Could not find post data in Reddit response.' }), { status: 404, headers });
+    }
+
+    const title = post.title || 'Reddit Video';
+    let videoUrl = null;
+    let duration = null;
+
+    // Method 1: post.media.reddit_video
+    if (post.is_video && post.media?.reddit_video?.fallback_url) {
+        videoUrl = post.media.reddit_video.fallback_url;
+        duration = post.media.reddit_video.duration;
+    }
+    // Method 2: post.secure_media.reddit_video
+    else if (post.is_video && post.secure_media?.reddit_video?.fallback_url) {
+        videoUrl = post.secure_media.reddit_video.fallback_url;
+        duration = post.secure_media.reddit_video.duration;
+    }
+    // Method 3: crosspost
+    else if (post.crosspost_parent_list?.length > 0) {
+        for (const cp of post.crosspost_parent_list) {
+            const rv = cp.media?.reddit_video || cp.secure_media?.reddit_video;
+            if (rv?.fallback_url) {
+                videoUrl = rv.fallback_url;
+                duration = rv.duration;
+                break;
+            }
+        }
+    }
+    // Method 4: preview.reddit_video_preview
+    else if (post.preview?.reddit_video_preview?.fallback_url) {
+        videoUrl = post.preview.reddit_video_preview.fallback_url;
+        duration = post.preview.reddit_video_preview.duration;
+    }
+    // Method 5: direct URL
+    else if (post.url_overridden_by_dest) {
+        const u = post.url_overridden_by_dest;
+        if (u.match(/\.(mp4|webm)(\?|$)/i)) {
+            videoUrl = u;
+        } else if (u.match(/\.gifv$/i)) {
+            videoUrl = u.replace('.gifv', '.mp4');
+        } else if (u.includes('v.redd.it')) {
+            videoUrl = u.endsWith('/') ? u + 'DASH_720.mp4' : u + '/DASH_720.mp4';
+        }
+    }
+    // Method 6: media.oembed or other embed
+    else if (post.url && post.url.includes('v.redd.it')) {
+        videoUrl = post.url.endsWith('/') ? post.url + 'DASH_720.mp4' : post.url + '/DASH_720.mp4';
+    }
+
+    if (!videoUrl) {
+        return new Response(JSON.stringify({ 
+            error: 'No video found in this post. This tool works with Reddit-hosted videos (v.redd.it). The post may contain an image, text, or a link to an external site.' 
+        }), { status: 404, headers });
+    }
+
+    // Clean video URL
+    videoUrl = videoUrl.split('?')[0];
+
+    // Build audio URL
+    let audioUrl = null;
+    if (videoUrl.includes('v.redd.it') && videoUrl.includes('DASH_')) {
+        audioUrl = videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4');
+    }
+
+    return new Response(JSON.stringify({
+        title,
+        videoUrl,
+        audioUrl,
+        duration,
+        hasAudio: !!audioUrl,
+    }), { status: 200, headers });
 }

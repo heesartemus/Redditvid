@@ -586,11 +586,14 @@
                 return;
             }
 
-            if (!url.match(/reddit\.com/i) && !url.match(/redd\.it/i)) {
+            if (!url.match(/reddit\.com/i) && !url.match(/redd\.it/i) && !url.match(/v\.redd\.it/i)) {
                 status.className = 'status error';
-                status.textContent = 'Please paste a valid Reddit post URL.';
+                status.textContent = 'Please paste a valid Reddit post URL. Example: https://www.reddit.com/r/funny/comments/...';
                 return;
             }
+
+            // Add https if missing
+            if (!url.startsWith('http')) url = 'https://' + url;
 
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>Processing...';
