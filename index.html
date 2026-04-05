@@ -586,15 +586,12 @@
                 return;
             }
 
-            // Clean URL
-            url = url.split('?')[0];
-            if (!url.match(/reddit\.com\/r\//i) && !url.match(/redd\.it\//i)) {
+            if (!url.match(/reddit\.com/i) && !url.match(/redd\.it/i)) {
                 status.className = 'status error';
                 status.textContent = 'Please paste a valid Reddit post URL.';
                 return;
             }
 
-            // Show loading
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>Processing...';
             status.className = 'status';
@@ -602,58 +599,30 @@
             result.classList.remove('show');
 
             try {
-                // Handle short redd.it URLs
-                if (url.match(/redd\.it\//)) {
-                    const resp = await fetch(url, { redirect: 'follow' });
-                    url = resp.url.split('?')[0];
-                }
-
-                // Ensure URL ends with .json
-                const jsonUrl = url.replace(/\/$/, '') + '.json';
-
-                const response = await fetch(jsonUrl, {
-                    headers: { 'User-Agent': 'RedditDown/1.0' }
-                });
-
-                if (!response.ok) throw new Error('Could not fetch Reddit post. Make sure the URL is correct.');
-
+                const response = await fetch('/api/fetch?url=' + encodeURIComponent(url));
                 const data = await response.json();
-                const post = data[0]?.data?.children?.[0]?.data;
 
-                if (!post) throw new Error('Could not find video data in this post.');
-
-                // Check for Reddit video
-                let videoUrl = null;
-                let audioUrl = null;
-                let title = post.title || 'Reddit Video';
-
-                if (post.is_video && post.media?.reddit_video) {
-                    videoUrl = post.media.reddit_video.fallback_url;
-                    // Try to get audio
-                    audioUrl = videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4');
-                } else if (post.crosspost_parent_list?.[0]?.media?.reddit_video) {
-                    videoUrl = post.crosspost_parent_list[0].media.reddit_video.fallback_url;
-                    audioUrl = videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4');
-                } else if (post.url_overridden_by_dest?.match(/\.(mp4|gif)$/i)) {
-                    videoUrl = post.url_overridden_by_dest;
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Could not fetch video.');
                 }
 
-                if (!videoUrl) throw new Error('No downloadable video found in this Reddit post. Make sure the post contains a video.');
-
-                // Clean URL
-                videoUrl = videoUrl.split('?')[0];
-
-                // Show result
                 const preview = document.getElementById('videoPreview');
                 const saveBtn = document.getElementById('saveBtn');
                 const videoTitle = document.getElementById('videoTitle');
                 const videoMeta = document.getElementById('videoMeta');
 
-                preview.src = videoUrl;
-                saveBtn.href = videoUrl;
+                preview.src = data.videoUrl;
+                saveBtn.href = data.videoUrl;
                 saveBtn.setAttribute('download', 'reddit-video.mp4');
+
+                const title = data.title || 'Reddit Video';
                 videoTitle.textContent = title.substring(0, 60) + (title.length > 60 ? '...' : '');
-                videoMeta.textContent = '';
+
+                let meta = '';
+                if (data.duration) meta += Math.round(data.duration) + 's';
+                if (data.hasAudio) meta += (meta ? ' · ' : '') + 'With audio';
+                else meta += (meta ? ' · ' : '') + 'No audio track';
+                videoMeta.textContent = meta;
 
                 result.classList.add('show');
                 status.className = 'status success';
@@ -668,7 +637,6 @@
             }
         }
 
-        // Allow Enter key
         document.getElementById('urlInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') fetchVideo();
         });
