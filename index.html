@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Video Downloader — Download Reddit Videos Free Online</title>
+    <meta name="description" content="Download Reddit videos instantly. Free Reddit video downloader — paste the link, click download. No signup, no watermark. Save Reddit videos with audio in HD.">
+    <meta name="keywords" content="reddit video downloader, download video reddit, reddit video download, download reddit video with audio, save reddit video, reddit video saver, reddit downloader">
+    <meta name="author" content="RedditDown">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://redditdown.app/">
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Reddit Video Downloader — Download Reddit Videos Free">
+    <meta property="og:description" content="Download Reddit videos with audio instantly. Free, fast, no signup. Paste the link and save.">
+    <meta property="og:url" content="https://redditdown.app/">
+    <meta property="og:image" content="https://redditdown.app/og-image.png">
+    <meta property="og:site_name" content="RedditDown">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Reddit Video Downloader — Free Online">
+    <meta name="twitter:description" content="Download Reddit videos with audio. Free, no signup, no watermark.">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Reddit Video Downloader",
+        "url": "https://redditdown.app/",
+        "description": "Free online Reddit video downloader. Download Reddit videos with audio in HD quality. No signup required.",
+        "applicationCategory": "Utility",
+        "operatingSystem": "Any",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": ["Download Reddit videos", "Save with audio", "HD quality", "No watermark", "No signup", "Works on mobile"]
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "How do I download a video from Reddit?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Copy the Reddit post URL, paste it in the box above, and click Download. The video will be ready to save in seconds. No signup or app needed." }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I download Reddit videos with audio?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. Our Reddit video downloader saves videos with audio included. Reddit stores video and audio separately, but our tool merges them automatically." }
+            },
+            {
+                "@type": "Question",
+                "name": "Is this Reddit video downloader free?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes, 100% free. No signup, no watermark, no limits. Download as many Reddit videos as you want." }
+            },
+            {
+                "@type": "Question",
+                "name": "Does it work on mobile?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. Works on iPhone, Android, tablet, and desktop. Open the site in your browser, paste the link, and download." }
+            },
+            {
+                "@type": "Question",
+                "name": "What Reddit content can I download?",
+                "acceptedAnswer": { "@type": "Answer", "text": "You can download videos hosted on Reddit (v.redd.it). For videos from external sources like YouTube or Imgur, use the original platform's download tools." }
+            }
+        ]
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #0F0F0F;
+            --surface: #1A1A1B;
+            --surface2: #222223;
+            --text: #F5F5F5;
+            --muted: #8A8A8B;
+            --accent: #FF4500;
+            --accent-hover: #FF5722;
+            --accent-soft: rgba(255,69,0,0.12);
+            --border: #2D2D2E;
+            --success: #46D160;
+            --font: 'Space Grotesk', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* ═══ HEADER ═══ */
+        header {
+            padding: 14px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 18px;
+        }
+        .logo-text {
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .logo-text span { color: var(--accent); }
+        nav { display: flex; align-items: center; gap: 4px; }
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        nav a:hover { color: var(--text); background: var(--surface2); }
+
+        /* ═══ HERO ═══ */
+        .hero {
+            text-align: center;
+            padding: 72px 24px 48px;
+            background: radial-gradient(ellipse at center top, rgba(255,69,0,0.08) 0%, transparent 60%);
+        }
+        .hero h1 {
+            font-size: clamp(30px, 5vw, 48px);
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+            margin-bottom: 14px;
+        }
+        .hero h1 em {
+            font-style: normal;
+            color: var(--accent);
+        }
+        .hero p {
+            font-size: 17px;
+            color: var(--muted);
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* ═══ TOOL ═══ */
+        .tool-wrap {
+            max-width: 720px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        .input-group {
+            display: flex;
+            gap: 0;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }
+        .input-group:focus-within {
+            border-color: var(--accent);
+        }
+        .input-group input {
+            flex: 1;
+            padding: 18px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 16px;
+            outline: none;
+        }
+        .input-group input::placeholder { color: var(--muted); opacity: 0.6; }
+        .dl-btn {
+            padding: 18px 32px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            font-family: var(--font);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .dl-btn:hover { background: var(--accent-hover); }
+        .dl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ═══ STATUS ═══ */
+        .status {
+            text-align: center;
+            padding: 16px 0;
+            font-size: 14px;
+            color: var(--muted);
+            min-height: 48px;
+        }
+        .status.error { color: #EF4444; }
+        .status.success { color: var(--success); }
+
+        /* ═══ RESULT ═══ */
+        .result {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .result.show { display: block; }
+        .result-video {
+            width: 100%;
+            max-height: 400px;
+            background: #000;
+            display: block;
+        }
+        .result-bar {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .result-info {
+            font-size: 14px;
+            color: var(--muted);
+        }
+        .result-info b { color: var(--text); }
+        .result-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .save-btn {
+            padding: 10px 24px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .save-btn:hover { opacity: 0.88; }
+
+        /* ═══ HOW TO ═══ */
+        .steps {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 64px 24px 0;
+        }
+        .steps-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+            margin-bottom: 8px;
+        }
+        .steps-sub {
+            text-align: center;
+            color: var(--muted);
+            font-size: 15px;
+            margin-bottom: 40px;
+        }
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .step {
+            text-align: center;
+            padding: 32px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        .step-num {
+            width: 44px;
+            height: 44px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+        .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .step p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+        /* ═══ FEATURES ═══ */
+        .section {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 64px 24px 0;
+        }
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .section-sub {
+            font-size: 15px;
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .feat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .feat-card {
+            padding: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+        .feat-card .ic { font-size: 28px; margin-bottom: 12px; }
+        .feat-card h4 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+        .feat-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+        /* ═══ FAQ ═══ */
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 18px 0;
+        }
+        .faq-q {
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .faq-q:hover { color: var(--accent); }
+        .faq-q .arr { font-size: 12px; color: var(--muted); transition: transform 0.3s; }
+        .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .faq-a p { padding-top: 12px; font-size: 15px; color: var(--muted); line-height: 1.7; }
+        .faq-item.open .faq-a { max-height: 200px; }
+        .faq-item.open .arr { transform: rotate(180deg); }
+
+        /* ═══ SEO ═══ */
+        .seo-text { max-width: 720px; margin: 0 auto; }
+        .seo-text h3 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+        .seo-text p { font-size: 15px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; }
+
+        /* ═══ FOOTER ═══ */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 28px 32px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 64px;
+        }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 640px) {
+            header { padding: 12px 16px; }
+            .hero { padding: 48px 16px 32px; }
+            .tool-wrap { padding: 0 16px; }
+            .input-group { flex-direction: column; }
+            .dl-btn { text-align: center; }
+            .step-grid { grid-template-columns: 1fr; }
+            .section { padding: 40px 16px 0; }
+            .steps { padding: 40px 16px 0; }
+            nav a { padding: 8px 10px; font-size: 13px; }
+            .result-bar { flex-direction: column; align-items: flex-start; }
+        }
+
+        /* ═══ SPINNER ═══ */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="/" class="logo">
+            <div class="logo-icon">R</div>
+            <div class="logo-text">Reddit<span>Down</span></div>
+        </a>
+        <nav>
+            <a href="/">Tool</a>
+            <a href="/blog">Blog</a>
+            <a href="#faq">FAQ</a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h1><em>Reddit Video</em> Downloader</h1>
+        <p>Paste a Reddit link, download the video with audio. Free, fast, no signup.</p>
+    </section>
+
+    <div class="tool-wrap">
+        <div class="input-group">
+            <input type="text" id="urlInput" placeholder="Paste Reddit video URL here..." autocomplete="off">
+            <button class="dl-btn" id="dlBtn" onclick="fetchVideo()">Download</button>
+        </div>
+        <div class="status" id="status"></div>
+        <div class="result" id="result">
+            <video class="result-video" id="videoPreview" controls></video>
+            <div class="result-bar">
+                <div class="result-info">
+                    <b id="videoTitle">Reddit Video</b>
+                    <span id="videoMeta"></span>
+                </div>
+                <div class="result-actions">
+                    <a class="save-btn" id="saveBtn" href="#" download>&#11015; Save Video</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOW TO -->
+    <div class="steps">
+        <h2 class="steps-title">How to Download Reddit Videos</h2>
+        <p class="steps-sub">3 simple steps. Takes about 5 seconds.</p>
+        <div class="step-grid">
+            <div class="step">
+                <div class="step-num">1</div>
+                <h3>Copy the Link</h3>
+                <p>Find a video on Reddit. Tap "Share" and copy the post URL. Works from the app or browser.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h3>Paste &amp; Download</h3>
+                <p>Paste the Reddit link in the box above. Click "Download" and wait a few seconds.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h3>Save the Video</h3>
+                <p>Preview the video, then click "Save Video" to download it to your device. Done!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- FEATURES -->
+    <section class="section" id="features">
+        <h3 class="section-title">Why Use This Reddit Video Downloader?</h3>
+        <p class="section-sub">The simplest way to download video from Reddit.</p>
+        <div class="feat-grid">
+            <article class="feat-card">
+                <div class="ic">&#127909;</div>
+                <h4>Video + Audio</h4>
+                <p>Reddit stores video and audio separately. Our Reddit video downloader merges them so you get the complete video with sound.</p>
+            </article>
+            <article class="feat-card">
+                <div class="ic">&#9889;</div>
+                <h4>Instant Download</h4>
+                <p>Paste the link, click download. Your Reddit video is ready in seconds. No waiting, no queues.</p>
+            </article>
+            <article class="feat-card">
+                <div class="ic">&#128241;</div>
+                <h4>Works on Mobile</h4>
+                <p>Download Reddit videos on iPhone, Android, or any device. No app needed &mdash; works right in your browser.</p>
+            </article>
+            <article class="feat-card">
+                <div class="ic">&#128274;</div>
+                <h4>No Signup Required</h4>
+                <p>No account, no email, no personal info. Just paste and download. We don't track you.</p>
+            </article>
+            <article class="feat-card">
+                <div class="ic">&#127775;</div>
+                <h4>HD Quality</h4>
+                <p>Download Reddit videos in the highest quality available &mdash; up to 1080p when the source supports it.</p>
+            </article>
+            <article class="feat-card">
+                <div class="ic">&#128683;</div>
+                <h4>No Watermark</h4>
+                <p>The video you download is clean. No watermarks, no branding, no modifications. Just the original video.</p>
+            </article>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section" id="faq">
+        <h3 class="section-title">Frequently Asked Questions</h3>
+        <p class="section-sub">Everything you need to know about downloading Reddit videos.</p>
+
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">How do I download a video from Reddit?<span class="arr">&#9660;</span></div>
+            <div class="faq-a"><p>Copy the Reddit post URL (from the app or browser), paste it in the box above, and click Download. The video will be processed and ready to save in seconds. This is the easiest way to download video from Reddit.</p></div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Can I download Reddit videos with audio?<span class="arr">&#9660;</span></div>
+            <div class="faq-a"><p>Yes. Reddit stores video and audio as separate files. Our Reddit video downloader automatically merges them so you get the complete video with sound. No extra steps needed.</p></div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Does it work on iPhone and Android?<span class="arr">&#9660;</span></div>
+            <div class="faq-a"><p>Yes. Open this site in your phone's browser (Safari, Chrome, etc.), paste the Reddit link, and download. No app installation needed. Works on any device with a browser.</p></div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Is this free?<span class="arr">&#9660;</span></div>
+            <div class="faq-a"><p>Yes, 100% free. No signup, no premium tier, no limits. Download as many Reddit videos as you want.</p></div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">Why can't I download some Reddit videos?<span class="arr">&#9660;</span></div>
+            <div class="faq-a"><p>This tool works with videos hosted directly on Reddit (v.redd.it links). Videos hosted on YouTube, Imgur, or other external sites need to be downloaded from those platforms directly. Also, videos from private subreddits or deleted posts cannot be accessed.</p></div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q" onclick="toggleFaq(this)">What video quality is available?<span class="arr">&#9660;</span></div>
+            <div class="faq-a"><p>We download the highest quality version available. Reddit typically offers videos in 240p, 360p, 480p, 720p, and 1080p. The quality depends on what the original uploader posted.</p></div>
+        </div>
+    </section>
+
+    <!-- SEO CONTENT -->
+    <section class="section seo-text" id="about">
+        <h3>About This Reddit Video Downloader</h3>
+        <p>This free Reddit video downloader lets you save any Reddit video to your device. Reddit doesn't have a built-in download button for videos. That's why you need a tool like this. Just paste the Reddit post URL and download the video with audio in seconds.</p>
+        <p>Unlike other Reddit video download tools, this one is clean and simple. No pop-up ads. No fake download buttons. No forced app installs. Paste the link, click download, save the video. Works on any phone, tablet, or computer.</p>
+
+        <h3>How to Download Video from Reddit</h3>
+        <p>Downloading video from Reddit is simple with our tool. Open the Reddit post with the video you want. Copy the URL from your browser's address bar or use the Share button in the Reddit app. Paste that URL into the box above and click Download. Your Reddit video download will be ready in a few seconds.</p>
+        <p>Reddit stores video and audio as separate streams. Most basic tools only download the video without sound. Our Reddit video downloader handles this by combining both streams, so you get the complete video with audio every time.</p>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 <a href="/">RedditDown</a> &mdash; Free Reddit video downloader. No signup. No watermark. Just download.</p>
+    </footer>
+
+    <script defer src="/_vercel/insights/script.js"></script>
+    <script>
+        function toggleFaq(el) {
+            el.parentElement.classList.toggle('open');
+        }
+
+        async function fetchVideo() {
+            const input = document.getElementById('urlInput');
+            const btn = document.getElementById('dlBtn');
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            let url = input.value.trim();
+
+            if (!url) {
+                status.className = 'status error';
+                status.textContent = 'Please paste a Reddit URL.';
+                return;
+            }
+
+            // Clean URL
+            url = url.split('?')[0];
+            if (!url.match(/reddit\.com\/r\//i) && !url.match(/redd\.it\//i)) {
+                status.className = 'status error';
+                status.textContent = 'Please paste a valid Reddit post URL.';
+                return;
+            }
+
+            // Show loading
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Processing...';
+            status.className = 'status';
+            status.textContent = 'Fetching video from Reddit...';
+            result.classList.remove('show');
+
+            try {
+                // Handle short redd.it URLs
+                if (url.match(/redd\.it\//)) {
+                    const resp = await fetch(url, { redirect: 'follow' });
+                    url = resp.url.split('?')[0];
+                }
+
+                // Ensure URL ends with .json
+                const jsonUrl = url.replace(/\/$/, '') + '.json';
+
+                const response = await fetch(jsonUrl, {
+                    headers: { 'User-Agent': 'RedditDown/1.0' }
+                });
+
+                if (!response.ok) throw new Error('Could not fetch Reddit post. Make sure the URL is correct.');
+
+                const data = await response.json();
+                const post = data[0]?.data?.children?.[0]?.data;
+
+                if (!post) throw new Error('Could not find video data in this post.');
+
+                // Check for Reddit video
+                let videoUrl = null;
+                let audioUrl = null;
+                let title = post.title || 'Reddit Video';
+
+                if (post.is_video && post.media?.reddit_video) {
+                    videoUrl = post.media.reddit_video.fallback_url;
+                    // Try to get audio
+                    audioUrl = videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4');
+                } else if (post.crosspost_parent_list?.[0]?.media?.reddit_video) {
+                    videoUrl = post.crosspost_parent_list[0].media.reddit_video.fallback_url;
+                    audioUrl = videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4');
+                } else if (post.url_overridden_by_dest?.match(/\.(mp4|gif)$/i)) {
+                    videoUrl = post.url_overridden_by_dest;
+                }
+
+                if (!videoUrl) throw new Error('No downloadable video found in this Reddit post. Make sure the post contains a video.');
+
+                // Clean URL
+                videoUrl = videoUrl.split('?')[0];
+
+                // Show result
+                const preview = document.getElementById('videoPreview');
+                const saveBtn = document.getElementById('saveBtn');
+                const videoTitle = document.getElementById('videoTitle');
+                const videoMeta = document.getElementById('videoMeta');
+
+                preview.src = videoUrl;
+                saveBtn.href = videoUrl;
+                saveBtn.setAttribute('download', 'reddit-video.mp4');
+                videoTitle.textContent = title.substring(0, 60) + (title.length > 60 ? '...' : '');
+                videoMeta.textContent = '';
+
+                result.classList.add('show');
+                status.className = 'status success';
+                status.textContent = 'Video ready! Click "Save Video" to download.';
+
+            } catch (err) {
+                status.className = 'status error';
+                status.textContent = err.message || 'Something went wrong. Please try again.';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Download';
+            }
+        }
+
+        // Allow Enter key
+        document.getElementById('urlInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') fetchVideo();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://redditdown.app/sitemap.xml
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
