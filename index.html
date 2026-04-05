@@ -603,10 +603,16 @@
 
             try {
                 const response = await fetch('/api/fetch?url=' + encodeURIComponent(url));
-                const data = await response.json();
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch(e) {
+                    throw new Error('Server returned invalid response (status ' + response.status + '). The API route may not be deployed correctly.');
+                }
 
                 if (!response.ok || data.error) {
-                    throw new Error(data.error || 'Could not fetch video.');
+                    throw new Error(data.error || 'Failed with status ' + response.status);
                 }
 
                 const preview = document.getElementById('videoPreview');

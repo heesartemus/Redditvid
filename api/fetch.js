@@ -1,185 +1,181 @@
-export const config = {
-    runtime: 'edge',
-};
+const https = require('https');
 
-export default async function handler(req) {
-    const { searchParams } = new URL(req.url);
-    const inputUrl = searchParams.get('url');
+module.exports = async function handler(req, res) {
+    // CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-    };
-
-    if (!inputUrl) {
-        return new Response(JSON.stringify({ error: 'No URL provided' }), { status: 400, headers });
-    }
+    const inputUrl = req.query.url;
+    if (!inputUrl) return res.status(400).json({ error: 'No URL provided' });
 
     try {
-        // Step 1: Resolve the URL (follow redirects for short/share URLs)
         let postUrl = inputUrl.trim();
-        
-        // Follow redirects for redd.it and /s/ share links
-        if (postUrl.match(/redd\.it/i) || postUrl.match(/reddit\.com\/r\/[^/]+\/s\//i)) {
-            try {
-                const r = await fetch(postUrl, {
-                    redirect: 'follow',
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    }
-                });
-                postUrl = r.url;
-            } catch (e) {
-                // Keep original URL if redirect fails
-            }
+
+        // Step 1: If short/share URL, resolve redirect
+        if (postUrl.match(/redd\.it/i) || postUrl.match(/\/s\//i)) {
+            postUrl = await resolveRedirect(postUrl);
         }
 
-        // Step 2: Clean and normalize the URL
-        postUrl = postUrl.split('?')[0].replace(/\/$/, '');
-
-        // Remove tracking params and clean
-        postUrl = postUrl.replace(/\/+$/, '');
-
-        // Validate it looks like a Reddit post
-        if (!postUrl.match(/reddit\.com\/r\//i) && !postUrl.match(/reddit\.com\/user\//i)) {
-            return new Response(JSON.stringify({ error: 'This does not look like a Reddit post URL. Please copy the full URL from Reddit.' }), { status: 400, headers });
+        // Step 2: Clean URL
+        postUrl = postUrl.split('?')[0].replace(/\/+$/, '');
+        postUrl = postUrl.replace(/\/\/old\.reddit/i, '//www.reddit');
+        postUrl = postUrl.replace(/\/\/m\.reddit/i, '//www.reddit');
+        if (postUrl.includes('reddit.com') && !postUrl.includes('www.reddit.com')) {
+            postUrl = postUrl.replace('reddit.com', 'www.reddit.com');
         }
 
-        // Step 3: Try fetching JSON from old.reddit.com (more reliable)
-        const oldRedditUrl = postUrl
-            .replace('www.reddit.com', 'old.reddit.com')
-            .replace('://reddit.com', '://old.reddit.com')
-            .replace('://m.reddit.com', '://old.reddit.com');
-
-        const jsonUrl = oldRedditUrl + '.json';
-
-        const response = await fetch(jsonUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-            }
-        });
-
-        if (!response.ok) {
-            // Fallback: try www.reddit.com
-            const wwwJsonUrl = postUrl
-                .replace('old.reddit.com', 'www.reddit.com')
-                .replace('://reddit.com', '://www.reddit.com')
-                .replace('://m.reddit.com', '://www.reddit.com')
-                + '.json';
-
-            const resp2 = await fetch(wwwJsonUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    'Accept': 'application/json',
-                }
-            });
-
-            if (!resp2.ok) {
-                return new Response(JSON.stringify({ 
-                    error: 'Reddit returned status ' + resp2.status + '. The post may be private, deleted, or NSFW. Try a different post.' 
-                }), { status: 400, headers });
-            }
-
-            const text2 = await resp2.text();
-            return processRedditJson(text2, headers);
+        // Step 3: Fetch JSON
+        const jsonUrl = postUrl + '.json';
+        let jsonData;
+        try {
+            jsonData = await httpGet(jsonUrl);
+        } catch(fetchErr) {
+            return res.status(400).json({ error: 'Failed to reach Reddit: ' + fetchErr.message });
         }
 
-        const text = await response.text();
-        return processRedditJson(text, headers);
+        let data;
+        try {
+            data = JSON.parse(jsonData);
+        } catch(e) {
+            // If Reddit returned HTML instead of JSON, try adding .json differently
+            return res.status(400).json({ error: 'Reddit did not return JSON. The post may be private or NSFW.' });
+        }
+
+        // Step 4: Extract post
+        let post;
+        if (Array.isArray(data) && data[0] && data[0].data && data[0].data.children && data[0].data.children[0]) {
+            post = data[0].data.children[0].data;
+        } else if (data && data.data && data.data.children && data.data.children[0]) {
+            post = data.data.children[0].data;
+        }
+
+        if (!post) return res.status(404).json({ error: 'No post data found in Reddit response.' });
+
+        // Step 5: Find video
+        const result = extractVideo(post);
+        if (!result.videoUrl) {
+            return res.status(404).json({ error: 'No Reddit video found. The post might be an image, text, GIF, or external link.' });
+        }
+
+        return res.status(200).json(result);
 
     } catch (err) {
-        return new Response(JSON.stringify({ error: 'Server error: ' + (err.message || 'Unknown error') }), { status: 500, headers });
+        return res.status(500).json({ error: 'Server error: ' + (err.message || 'Unknown') });
     }
-}
+};
 
-function processRedditJson(text, headers) {
-    let data;
-    try {
-        data = JSON.parse(text);
-    } catch (e) {
-        return new Response(JSON.stringify({ error: 'Reddit did not return valid data. The URL may be incorrect.' }), { status: 400, headers });
-    }
+function extractVideo(post) {
+    var videoUrl = null;
+    var audioUrl = null;
+    var duration = null;
+    var title = post.title || 'Reddit Video';
 
-    // Extract post data
-    let post;
-    if (Array.isArray(data) && data[0]?.data?.children?.[0]?.data) {
-        post = data[0].data.children[0].data;
-    } else if (data?.data?.children?.[0]?.data) {
-        post = data.data.children[0].data;
-    }
+    // Check all possible video locations
+    var rv = null;
 
-    if (!post) {
-        return new Response(JSON.stringify({ error: 'Could not find post data in Reddit response.' }), { status: 404, headers });
+    // 1. media.reddit_video
+    if (post.is_video && post.media && post.media.reddit_video) {
+        rv = post.media.reddit_video;
     }
-
-    const title = post.title || 'Reddit Video';
-    let videoUrl = null;
-    let duration = null;
-
-    // Method 1: post.media.reddit_video
-    if (post.is_video && post.media?.reddit_video?.fallback_url) {
-        videoUrl = post.media.reddit_video.fallback_url;
-        duration = post.media.reddit_video.duration;
+    // 2. secure_media.reddit_video
+    if (!rv && post.is_video && post.secure_media && post.secure_media.reddit_video) {
+        rv = post.secure_media.reddit_video;
     }
-    // Method 2: post.secure_media.reddit_video
-    else if (post.is_video && post.secure_media?.reddit_video?.fallback_url) {
-        videoUrl = post.secure_media.reddit_video.fallback_url;
-        duration = post.secure_media.reddit_video.duration;
-    }
-    // Method 3: crosspost
-    else if (post.crosspost_parent_list?.length > 0) {
-        for (const cp of post.crosspost_parent_list) {
-            const rv = cp.media?.reddit_video || cp.secure_media?.reddit_video;
-            if (rv?.fallback_url) {
-                videoUrl = rv.fallback_url;
-                duration = rv.duration;
-                break;
-            }
+    // 3. crosspost
+    if (!rv && post.crosspost_parent_list && post.crosspost_parent_list.length > 0) {
+        for (var i = 0; i < post.crosspost_parent_list.length; i++) {
+            var cp = post.crosspost_parent_list[i];
+            if (cp.media && cp.media.reddit_video) { rv = cp.media.reddit_video; break; }
+            if (cp.secure_media && cp.secure_media.reddit_video) { rv = cp.secure_media.reddit_video; break; }
         }
     }
-    // Method 4: preview.reddit_video_preview
-    else if (post.preview?.reddit_video_preview?.fallback_url) {
-        videoUrl = post.preview.reddit_video_preview.fallback_url;
-        duration = post.preview.reddit_video_preview.duration;
-    }
-    // Method 5: direct URL
-    else if (post.url_overridden_by_dest) {
-        const u = post.url_overridden_by_dest;
-        if (u.match(/\.(mp4|webm)(\?|$)/i)) {
-            videoUrl = u;
-        } else if (u.match(/\.gifv$/i)) {
-            videoUrl = u.replace('.gifv', '.mp4');
-        } else if (u.includes('v.redd.it')) {
-            videoUrl = u.endsWith('/') ? u + 'DASH_720.mp4' : u + '/DASH_720.mp4';
-        }
-    }
-    // Method 6: media.oembed or other embed
-    else if (post.url && post.url.includes('v.redd.it')) {
-        videoUrl = post.url.endsWith('/') ? post.url + 'DASH_720.mp4' : post.url + '/DASH_720.mp4';
+    // 4. preview
+    if (!rv && post.preview && post.preview.reddit_video_preview) {
+        rv = post.preview.reddit_video_preview;
     }
 
-    if (!videoUrl) {
-        return new Response(JSON.stringify({ 
-            error: 'No video found in this post. This tool works with Reddit-hosted videos (v.redd.it). The post may contain an image, text, or a link to an external site.' 
-        }), { status: 404, headers });
+    if (rv && rv.fallback_url) {
+        videoUrl = rv.fallback_url.split('?')[0];
+        duration = rv.duration;
     }
 
-    // Clean video URL
-    videoUrl = videoUrl.split('?')[0];
+    // 5. Direct URL fallback
+    if (!videoUrl && post.url_overridden_by_dest) {
+        var u = post.url_overridden_by_dest;
+        if (/\.(mp4|webm)(\?|$)/i.test(u)) videoUrl = u.split('?')[0];
+        else if (/\.gifv$/i.test(u)) videoUrl = u.replace('.gifv', '.mp4');
+        else if (u.indexOf('v.redd.it') !== -1) videoUrl = u.replace(/\/$/, '') + '/DASH_720.mp4';
+    }
 
-    // Build audio URL
-    let audioUrl = null;
-    if (videoUrl.includes('v.redd.it') && videoUrl.includes('DASH_')) {
+    // 6. post.url
+    if (!videoUrl && post.url && post.url.indexOf('v.redd.it') !== -1) {
+        videoUrl = post.url.replace(/\/$/, '') + '/DASH_720.mp4';
+    }
+
+    // Audio URL
+    if (videoUrl && videoUrl.indexOf('DASH_') !== -1) {
         audioUrl = videoUrl.replace(/DASH_\d+\.mp4/, 'DASH_AUDIO_128.mp4');
     }
 
-    return new Response(JSON.stringify({
-        title,
-        videoUrl,
-        audioUrl,
-        duration,
-        hasAudio: !!audioUrl,
-    }), { status: 200, headers });
+    return { title: title, videoUrl: videoUrl, audioUrl: audioUrl, duration: duration, hasAudio: !!audioUrl };
+}
+
+function httpGet(url) {
+    return new Promise(function(resolve, reject) {
+        var options = {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+            }
+        };
+
+        https.get(url, options, function(resp) {
+            // Follow redirects (up to 5)
+            if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
+                var loc = resp.headers.location;
+                if (loc.startsWith('/')) {
+                    var parsed = new URL(url);
+                    loc = parsed.protocol + '//' + parsed.host + loc;
+                }
+                return resolve(httpGet(loc));
+            }
+
+            if (resp.statusCode !== 200) {
+                return reject(new Error('HTTP ' + resp.statusCode));
+            }
+
+            var data = '';
+            resp.on('data', function(chunk) { data += chunk; });
+            resp.on('end', function() { resolve(data); });
+            resp.on('error', reject);
+        }).on('error', reject);
+    });
+}
+
+function resolveRedirect(url) {
+    return new Promise(function(resolve) {
+        if (!url.startsWith('http')) url = 'https://' + url;
+
+        var parsed = new URL(url);
+        var options = {
+            hostname: parsed.hostname,
+            path: parsed.pathname + parsed.search,
+            method: 'HEAD',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            }
+        };
+
+        var req = https.request(options, function(resp) {
+            if (resp.headers.location) {
+                resolve(resp.headers.location);
+            } else {
+                resolve(url);
+            }
+        });
+        req.on('error', function() { resolve(url); });
+        req.end();
+    });
 }

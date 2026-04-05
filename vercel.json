@@ -1,1 +1,8 @@
-{"cleanUrls": true}
+{
+  "cleanUrls": true,
+  "functions": {
+    "api/fetch.js": {
+      "maxDuration": 10
+    }
+  }
+}
